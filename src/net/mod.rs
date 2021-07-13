@@ -488,13 +488,13 @@ pub unsafe extern "C" fn zn_write_ext(
     let reskey = ResKey::from_raw(reskey);
     let result = match (*session)
         .0
-        .write_ext(
+        .write(
             &reskey,
             slice::from_raw_parts(payload as *const u8, len as usize).into(),
-            encoding as ZInt,
-            kind as ZInt,
-            congestion_control.into(),
         )
+        .encoding(encoding as ZInt)
+        .kind(kind as ZInt)
+        .congestion_control(congestion_control.into())
         .wait()
     {
         Ok(()) => 0,
@@ -571,9 +571,17 @@ pub unsafe extern "C" fn zn_declare_subscriber(
     let arg = Box::from_raw(arg);
     let (tx, rx) = bounded::<ZnSubOps>(8);
     let rsub = zn_subscriber_t(Some(Arc::new(tx)));
+    let period = if sub_info.period.is_null() {
+        None
+    } else {
+        Some(*sub_info.period.cast())
+    };
     let mut sub: Subscriber = (*session)
         .0
-        .declare_subscriber(&reskey, &sub_info.into())
+        .declare_subscriber(&reskey)
+        .reliability(sub_info.reliability.into())
+        .mode(sub_info.mode.into())
+        .period(period)
         .wait()
         .unwrap();
 
@@ -690,7 +698,10 @@ pub unsafe extern "C" fn zn_query(
     let arg = Box::from_raw(arg);
     let mut q = (*session)
         .0
-        .query(&reskey, p, target.into(), consolidation.into())
+        .query(&reskey)
+        .predicate(p)
+        .target(target.into())
+        .consolidation(consolidation.into())
         .wait()
         .unwrap();
 
@@ -748,7 +759,10 @@ pub unsafe extern "C" fn zn_query_collect(
     let mut replies = task::block_on(async {
         let q = (*session)
             .0
-            .query(&reskey, p, target.into(), consolidation.into())
+            .query(&reskey)
+            .predicate(p)
+            .target(target.into())
+            .consolidation(consolidation.into())
             .await
             .unwrap();
         q.collect::<Vec<Reply>>().await
@@ -795,7 +809,8 @@ pub unsafe extern "C" fn zn_declare_queryable(
     let r = zn_queryable_t(Some(Arc::new(tx)));
     let mut queryable: zenoh::net::Queryable = (*session)
         .0
-        .declare_queryable(&reskey, kind as ZInt)
+        .declare_queryable(&reskey)
+        .kind(kind as ZInt)
         .wait()
         .unwrap();
 
