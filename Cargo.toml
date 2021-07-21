@@ -11,6 +11,9 @@
 # Contributors:
 #   ADLINK zenoh team, <zenoh@adlink-labs.tech>
 #
+[workspace]
+members = [".", "zenoh-c-plugins"]
+
 [package]
 name = "zenoh-c"
 version = "0.5.0-dev"
